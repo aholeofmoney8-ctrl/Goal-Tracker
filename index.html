@@ -2,918 +2,770 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Goal Tracker</title>
+
+  <!-- PWA Manifest Data URI -->
+  <link rel="manifest" href="data:application/manifest+json;charset=utf-8,%7B%22name%22%3A%22Goal%20Tracker%22%2C%22short_name%22%3A%22Goals%22%2C%22start_url%22%3A%22.%22%2C%22display%22%3A%22standalone%22%2C%22background_color%22%3A%22%23000000%22%2C%22theme_color%22%3A%22%23000000%22%7D">
+  <meta name="theme-color" content="#000000">
+
   <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
-  <!-- Font Awesome Icons -->
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-  <!-- Google Font Inter -->
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-  <script>
-    tailwind.config = {
-      theme: {
-        extend: {
-          fontFamily: {
-            sans: ['Inter', 'sans-serif'],
-          }
-        }
-      }
-    }
-  </script>
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <!-- Custom Theme Variable Styles & Animations -->
   <style>
+    :root {
+      --bg-color: #000000;
+      --card-bg: #111111;
+      --card-border: #222222;
+      --text-main: #ffffff;
+      --text-muted: #888888;
+      --accent: #ffffff;
+      --accent-hover: #e5e5e5;
+    }
+
+    /* Theme Overrides */
+    body.theme-pitch-black {
+      --bg-color: #000000;
+      --card-bg: #111111;
+      --card-border: #222222;
+      --text-main: #ffffff;
+      --text-muted: #888888;
+    }
+    body.theme-midnight-blue {
+      --bg-color: #0B0F19;
+      --card-bg: #111827;
+      --card-border: #1F2937;
+      --text-main: #F9FAFB;
+      --text-muted: #9CA3AF;
+    }
+    body.theme-deep-purple {
+      --bg-color: #0F0913;
+      --card-bg: #1A1025;
+      --card-border: #2A1B3D;
+      --text-main: #FDF8FF;
+      --text-muted: #A78BFA;
+    }
+    body.theme-charcoal-gray {
+      --bg-color: #121212;
+      --card-bg: #1E1E1E;
+      --card-border: #2C2C2C;
+      --text-main: #EEEEEE;
+      --text-muted: #AAAAAA;
+    }
+
     body {
-      background-color: #000000;
-      color: #e5e5e5;
+      background-color: var(--bg-color);
+      color: var(--text-main);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
       transition: background-color 0.3s ease, color 0.3s ease;
+      -webkit-tap-highlight-color: transparent;
     }
-    .progress-fill {
-      transition: width 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+
+    .app-card {
+      background-color: var(--card-bg);
+      border: 1px solid var(--card-border);
     }
-    .btn-press {
-      transition: transform 0.08s ease, background-color 0.15s ease, opacity 0.15s ease;
+
+    .modal-backdrop {
+      background-color: rgba(0, 0, 0, 0.75);
+      backdrop-filter: blur(4px);
     }
-    .btn-press:active {
-      transform: scale(0.95);
+
+    /* Smooth transition for view switches */
+    .fade-in {
+      animation: fadeIn 0.25s cubic-bezier(0.16, 1, 0.3, 1);
     }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(6px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Custom Scrollbar for Logs */
     ::-webkit-scrollbar {
-      width: 6px;
+      width: 4px;
     }
     ::-webkit-scrollbar-track {
       background: transparent;
     }
     ::-webkit-scrollbar-thumb {
-      background: #262626;
-      border-radius: 3px;
+      background: var(--card-border);
+      border-radius: 4px;
     }
   </style>
 </head>
-<body id="appBody" class="bg-black text-neutral-200 font-sans min-h-screen flex flex-col justify-between select-none">
+<body class="theme-pitch-black min-h-screen flex flex-col justify-between select-none">
 
-  <!-- ==================== VIEW 1: DASHBOARD ==================== -->
-  <div id="dashboardView" class="flex flex-col min-h-screen w-full">
+  <div id="app" class="max-w-md mx-auto w-full min-h-screen flex flex-col p-4 relative">
     
-    <!-- DASHBOARD HEADER -->
-    <header class="w-full bg-black/50 backdrop-blur-md border-b border-neutral-900 py-3.5 px-4 sm:px-6 sticky top-0 z-20">
-      <div class="max-w-xl mx-auto flex justify-between items-center">
-        <!-- Top Left: Settings Gear Button -->
-        <button onclick="openModal('settingsModal')" class="w-9 h-9 rounded-full bg-neutral-900 border border-neutral-800 text-neutral-400 hover:text-white hover:border-neutral-700 flex items-center justify-center transition-all shadow-md focus:outline-none" title="Settings & Themes">
-          <i class="fa-solid fa-gear text-sm"></i>
-        </button>
+    <!-- TOP NAVIGATION HEADER -->
+    <header class="flex items-center justify-between py-4 mb-2 border-b border-zinc-800/60">
+      <button id="btn-settings" aria-label="Settings" class="p-2 rounded-full hover:bg-zinc-800/50 text-zinc-400 hover:text-white transition">
+        <i data-lucide="settings" class="w-6 h-6"></i>
+      </button>
 
-        <!-- Header Title -->
-        <div class="flex items-center gap-2">
-          <span class="w-2 h-2 rounded-full bg-emerald-700 animate-pulse"></span>
-          <h1 class="text-xs font-mono uppercase tracking-widest text-neutral-400">Savings Dashboard</h1>
+      <div class="flex items-center gap-2">
+        <h1 class="text-xl font-semibold tracking-tight">Goal Tracker</h1>
+        <div id="streak-badge" class="flex items-center gap-1 bg-zinc-900 border border-zinc-800 text-xs px-2.5 py-1 rounded-full font-medium text-amber-500">
+          <span>🔥</span>
+          <span id="streak-count">0</span>
         </div>
-
-        <!-- Top Right: Create Goal Button (Note & Pen Icon) -->
-        <button onclick="openCreateGoalModal()" class="w-9 h-9 rounded-full bg-neutral-900 border border-neutral-800 text-neutral-300 hover:text-white hover:border-neutral-600 flex items-center justify-center transition-all shadow-md focus:outline-none" title="Create New Goal">
-          <i class="fa-solid fa-pen-to-square text-sm"></i>
-        </button>
       </div>
+
+      <button id="btn-add-goal" aria-label="Add Goal" class="p-2 rounded-full hover:bg-zinc-800/50 text-zinc-400 hover:text-white transition">
+        <i data-lucide="square-pen" class="w-6 h-6"></i>
+      </button>
     </header>
 
-    <!-- DASHBOARD CONTENT (Scrollable list of goals) -->
-    <main class="flex-1 max-w-xl w-full mx-auto px-4 py-6 flex flex-col gap-6">
+    <!-- MAIN VIEW CONTAINER -->
+    <main class="flex-1 flex flex-col">
       
-      <!-- Total Savings Summary Card -->
-      <div class="bg-neutral-950 border border-neutral-900 rounded-2xl p-5 shadow-xl">
-        <div class="text-[11px] font-mono text-neutral-500 uppercase tracking-wider mb-1">Combined Total Saved</div>
-        <div class="flex items-baseline justify-between">
-          <span id="overallTotalSavings" class="text-3xl font-bold font-mono text-neutral-100">$0.00</span>
-          <span id="overallGoalCount" class="text-xs font-mono text-neutral-500">0 Active Goals</span>
+      <!-- VIEW: DASHBOARD (GOALS LIST) -->
+      <section id="view-dashboard" class="fade-in flex-1 flex flex-col">
+        <div id="goals-list" class="space-y-3 my-2"></div>
+        
+        <!-- EMPTY STATE MESSAGE -->
+        <div id="empty-state" class="hidden flex-1 flex flex-col items-center justify-center text-center p-8 text-zinc-500 my-auto">
+          <div class="p-4 rounded-full bg-zinc-900/50 border border-zinc-800/80 mb-4 text-zinc-400">
+            <i data-lucide="target" class="w-10 h-10 stroke-[1.5]"></i>
+          </div>
+          <p class="text-base font-medium text-zinc-300 mb-1">No goals yet</p>
+          <p class="text-xs text-zinc-500 max-w-[200px]">Tap the note icon above to add one!</p>
         </div>
-      </div>
+      </section>
 
-      <!-- Scrollable Goals Grid Container -->
-      <div class="space-y-3">
-        <div class="flex justify-between items-center px-1">
-          <h2 class="text-xs font-mono uppercase tracking-wider text-neutral-500">Your Goals</h2>
+      <!-- VIEW: GOAL DETAIL -->
+      <section id="view-detail" class="fade-in hidden flex-1 flex flex-col">
+        <!-- Detail Header Navigation -->
+        <div class="flex items-center justify-between mb-4">
+          <button id="btn-detail-back" class="flex items-center gap-1 text-xs text-zinc-400 hover:text-white transition">
+            <i data-lucide="chevron-left" class="w-4 h-4"></i> Back
+          </button>
+          <button id="btn-detail-delete" class="text-xs text-red-500/80 hover:text-red-400 font-medium transition">
+            Delete Goal
+          </button>
         </div>
 
-        <div id="goalsList" class="space-y-3 overflow-y-auto max-h-[calc(100vh-260px)] pr-1">
-          <!-- Goal Cards injected here via JS -->
+        <!-- Goal Header Info -->
+        <div class="text-center my-2">
+          <h2 id="detail-title" class="text-xl font-semibold tracking-tight mb-1">Goal Title</h2>
+          <div class="text-3xl font-extrabold my-2 tracking-tight">
+            $<span id="detail-current">0</span> <span class="text-base font-normal text-zinc-500">/ $<span id="detail-target">0</span></span>
+          </div>
+
+          <!-- Progress Bar -->
+          <div class="w-full bg-zinc-900 border border-zinc-800 rounded-full h-3 my-3 overflow-hidden p-0.5">
+            <div id="detail-progress-bar" class="bg-white h-full rounded-full transition-all duration-300" style="width: 0%"></div>
+          </div>
+
+          <!-- Completion Estimation Banner -->
+          <div id="detail-estimate" class="text-xs text-zinc-400 bg-zinc-900/40 border border-zinc-800/50 rounded-lg p-2.5 my-2">
+            Calculating estimated completion date...
+          </div>
         </div>
-      </div>
+
+        <!-- Quick Add Step Presets -->
+        <div class="my-4">
+          <label class="block text-xs text-zinc-500 mb-2 font-medium">QUICK ADD STEP PRESETS</label>
+          <div class="grid grid-cols-5 gap-2">
+            <button class="btn-step-preset app-card py-2 text-xs font-semibold rounded-lg hover:border-zinc-500 transition text-center" data-step="1">+$1</button>
+            <button class="btn-step-preset app-card py-2 text-xs font-semibold rounded-lg hover:border-zinc-500 transition text-center" data-step="5">+$5</button>
+            <button class="btn-step-preset app-card py-2 text-xs font-semibold rounded-lg hover:border-zinc-500 transition text-center" data-step="10">+$10</button>
+            <button class="btn-step-preset app-card py-2 text-xs font-semibold rounded-lg hover:border-zinc-500 transition text-center" data-step="50">+$50</button>
+            <button class="btn-step-preset app-card py-2 text-xs font-semibold rounded-lg hover:border-zinc-500 transition text-center" data-step="100">+$100</button>
+          </div>
+        </div>
+
+        <!-- Custom Contribution Entry -->
+        <div class="app-card p-3 rounded-xl mb-4">
+          <label class="block text-xs text-zinc-400 mb-2 font-medium">LOG DEPOSIT / ADJUSTMENT</label>
+          <div class="flex gap-2 mb-2">
+            <input type="number" id="input-log-amount" placeholder="Amount ($)" class="bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 text-sm text-white w-full focus:outline-none focus:border-zinc-600">
+            <button id="btn-submit-log" class="bg-white text-black font-semibold text-xs px-4 py-2 rounded-lg hover:bg-zinc-200 transition">Add</button>
+          </div>
+          <input type="text" id="input-log-note" placeholder="Optional note (e.g. Side hustle, Savings)" class="bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-1.5 text-xs text-white w-full focus:outline-none focus:border-zinc-600">
+        </div>
+
+        <!-- Transaction Log History -->
+        <div class="flex-1 flex flex-col min-h-[160px]">
+          <h3 class="text-xs font-medium text-zinc-500 mb-2">TRANSACTION HISTORY</h3>
+          <div id="detail-logs-list" class="flex-1 space-y-2 overflow-y-auto max-h-[180px] pr-1">
+            <!-- Dynamic Log Items -->
+          </div>
+        </div>
+      </section>
 
     </main>
   </div>
 
-  <!-- ==================== VIEW 2: GOAL DETAIL COUNTER ==================== -->
-  <div id="detailView" class="hidden flex-col min-h-screen w-full justify-between">
-    
-    <!-- DETAIL HEADER -->
-    <header class="w-full bg-black/50 backdrop-blur-md border-b border-neutral-900 py-3.5 px-4 sm:px-6 sticky top-0 z-20">
-      <div class="max-w-md mx-auto flex justify-between items-center">
-        <!-- Top Left: Back to Dashboard Button -->
-        <button onclick="showDashboard()" class="flex items-center gap-2 text-xs font-mono text-neutral-400 hover:text-white transition-colors bg-neutral-900 border border-neutral-800 px-3 py-1.5 rounded-full">
-          <i class="fa-solid fa-arrow-left text-[11px]"></i>
-          <span>Dashboard</span>
-        </button>
-
-        <!-- Top Right: Summary "0$ / 0$" -->
-        <div class="bg-neutral-950 px-2.5 py-1 rounded border border-neutral-900 font-mono text-xs text-neutral-300">
-          <span id="topCurrentDisplay">0$</span>
-          <span class="text-neutral-700 mx-0.5">/</span>
-          <span id="topTargetDisplay">0$</span>
-        </div>
+  
+  <!-- MODAL: ADD GOAL -->
+  <div id="modal-add-goal" class="fixed inset-0 modal-backdrop flex items-center justify-center p-4 z-50 hidden">
+    <div class="app-card w-full max-w-sm rounded-2xl p-5 fade-in shadow-2xl">
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="text-base font-semibold">New Goal</h3>
+        <button id="btn-close-add-modal" class="text-zinc-500 hover:text-white"><i data-lucide="x" class="w-5 h-5"></i></button>
       </div>
-    </header>
-
-    <!-- DETAIL MAIN CONTENT -->
-    <main class="flex-1 max-w-md w-full mx-auto px-5 py-6 flex flex-col justify-center items-center gap-5">
-      
-      <!-- Title & Edit Option -->
-      <div class="text-center w-full">
-        <div class="flex items-center justify-center gap-2">
-          <h2 id="mainGoalTitle" class="text-base font-medium text-neutral-300 tracking-wide">Goal Name</h2>
-          <button onclick="openEditCurrentGoalModal()" class="text-neutral-600 hover:text-neutral-300 transition-colors p-1" title="Edit Goal Details">
-            <i class="fa-solid fa-pen-to-square text-xs"></i>
-          </button>
-        </div>
-      </div>
-
-      <!-- MIDDLE: Large Centered Full-Width Display formatted "103$ / 2000$" -->
-      <div class="w-full bg-neutral-950/90 border border-neutral-900 rounded-2xl p-5 text-center shadow-2xl backdrop-blur-xs">
-        <div class="flex items-center justify-center flex-wrap gap-2 my-1">
-          <!-- Clickable Current Amount -->
-          <button onclick="openDirectInputModal('current')" class="group hover:bg-neutral-900/60 p-1.5 rounded-xl transition-all focus:outline-none" title="Click to edit current amount">
-            <span id="middleCurrentDisplay" class="text-4xl sm:text-5xl font-semibold tracking-tight text-neutral-100 font-mono group-hover:text-emerald-400 transition-colors">0$</span>
-          </button>
-          <span class="text-2xl sm:text-4xl font-light text-neutral-700 font-mono">/</span>
-          <!-- Clickable Target Amount -->
-          <button onclick="openDirectInputModal('target')" class="group hover:bg-neutral-900/60 p-1.5 rounded-xl transition-all focus:outline-none" title="Click to edit target goal">
-            <span id="middleTargetDisplay" class="text-4xl sm:text-5xl font-semibold tracking-tight text-neutral-400 font-mono group-hover:text-neutral-200 transition-colors">0$</span>
-          </button>
-        </div>
-        
-        <!-- Percentage & Deadline Stat Badge -->
-        <div class="flex flex-col items-center gap-1 mt-2">
-          <p class="text-xs font-mono text-neutral-500">
-            <span id="percentageDisplay" class="text-neutral-200 font-semibold">0%</span> completed
-          </p>
-          <div id="deadlineInfoBadge" class="hidden text-[11px] font-mono text-neutral-400 bg-neutral-900/80 px-2.5 py-1 rounded-md border border-neutral-800/80 mt-1">
-            <!-- Deadline details dynamically inserted -->
-          </div>
-        </div>
-      </div>
-
-      <!-- SLIGHTLY LOWER MIDDLE: Green (+) and Red (-) Buttons -->
-      <div class="w-full space-y-3">
-        
-        <!-- Step Amount Selector -->
-        <div class="flex items-center justify-between text-[11px] font-mono text-neutral-500 px-1">
-          <span class="text-neutral-600">Step size:</span>
-          <div class="flex gap-1" id="stepSelector">
-            <button onclick="setStepAmount(1)" class="step-btn px-2.5 py-1 rounded border border-neutral-900 bg-neutral-950 text-neutral-400 font-mono hover:bg-neutral-900 transition" data-step="1">1</button>
-            <button onclick="setStepAmount(5)" class="step-btn px-2.5 py-1 rounded border border-neutral-900 bg-neutral-950 text-neutral-400 font-mono hover:bg-neutral-900 transition" data-step="5">5</button>
-            <button onclick="setStepAmount(10)" class="step-btn px-2.5 py-1 rounded border border-neutral-800 bg-neutral-900 text-neutral-200 font-mono hover:bg-neutral-900 transition" data-step="10">10</button>
-            <button onclick="setStepAmount(50)" class="step-btn px-2.5 py-1 rounded border border-neutral-900 bg-neutral-950 text-neutral-400 font-mono hover:bg-neutral-900 transition" data-step="50">50</button>
-            <button onclick="setStepAmount(100)" class="step-btn px-2.5 py-1 rounded border border-neutral-900 bg-neutral-950 text-neutral-400 font-mono hover:bg-neutral-900 transition" data-step="100">100</button>
-          </div>
-        </div>
-
-        <!-- Muted Green (+) and Muted Red (-) Controls -->
-        <div class="grid grid-cols-2 gap-3">
-          <!-- MUTED GREEN ADD BUTTON -->
-          <button onclick="adjustValue(currentStep)" class="btn-press py-4 bg-emerald-950/70 hover:bg-emerald-900/80 active:bg-emerald-800/80 text-emerald-400/90 rounded-xl font-bold text-2xl border border-emerald-900/40 flex items-center justify-center shadow-lg">
-            <i class="fa-solid fa-plus text-xl"></i>
-          </button>
-
-          <!-- MUTED RED SUBTRACT BUTTON -->
-          <button onclick="adjustValue(-currentStep)" class="btn-press py-4 bg-red-950/70 hover:bg-red-900/80 active:bg-red-800/80 text-red-400/90 rounded-xl font-bold text-2xl border border-red-900/40 flex items-center justify-center shadow-lg">
-            <i class="fa-solid fa-minus text-xl"></i>
-          </button>
-        </div>
-
-        <!-- Custom Input Shortcut & Delete Goal Button -->
-        <div class="flex justify-between items-center pt-1 px-1 text-[11px] font-mono">
-          <button onclick="openDirectInputModal('custom')" class="text-neutral-500 hover:text-neutral-300 flex items-center gap-1.5 transition-colors">
-            <i class="fa-solid fa-sliders text-[10px]"></i> Custom Input
-          </button>
-          <button onclick="deleteCurrentGoal()" class="text-red-500/80 hover:text-red-400 flex items-center gap-1 transition-colors">
-            <i class="fa-solid fa-trash-can text-[10px]"></i> Delete Goal
-          </button>
-        </div>
-
-      </div>
-
-      <!-- TRANSACTION HISTORY LOG -->
-      <div class="w-full bg-neutral-950/60 border border-neutral-900 rounded-xl p-3.5 space-y-2">
-        <div class="flex justify-between items-center text-[11px] font-mono text-neutral-500 uppercase tracking-wider border-b border-neutral-900 pb-2">
-          <span>Transaction Log</span>
-          <span id="historyCount" class="text-neutral-600">0 logs</span>
-        </div>
-        <div id="historyList" class="space-y-1.5 max-h-36 overflow-y-auto pr-1 text-xs font-mono">
-          <!-- Log Entries -->
-        </div>
-      </div>
-
-    </main>
-
-    <!-- BOTTOM: Progress Bar -->
-    <footer class="w-full bg-black/50 border-t border-neutral-900 p-4 backdrop-blur-md">
-      <div class="max-w-md mx-auto space-y-2">
-        <div class="flex justify-between items-center text-[11px] font-mono text-neutral-500 uppercase tracking-wider">
-          <span>Goal Progress Bar</span>
-          <span id="progressBarText" class="text-neutral-300 font-semibold">0%</span>
-        </div>
-        <div class="w-full h-3 bg-neutral-950 rounded-full border border-neutral-900 overflow-hidden p-0.5">
-          <div id="progressBarFill" class="progress-fill h-full bg-neutral-300 rounded-full w-[0%]"></div>
-        </div>
-      </div>
-    </footer>
-
-  </div>
-
-  <!-- ==================== MODALS ==================== -->
-
-  <!-- 1. CREATE / EDIT GOAL MODAL -->
-  <div id="goalModal" class="fixed inset-0 bg-black/80 backdrop-blur-xs hidden items-center justify-center p-4 z-50">
-    <div class="bg-neutral-950 border border-neutral-800 rounded-2xl w-full max-w-sm p-5 space-y-4 shadow-2xl">
-      <div class="flex justify-between items-center border-b border-neutral-900 pb-3">
-        <h3 id="goalModalTitle" class="text-xs font-semibold text-neutral-300 uppercase tracking-wider">Create New Goal</h3>
-        <button onclick="closeModal('goalModal')" class="text-neutral-500 hover:text-white text-lg">&times;</button>
-      </div>
-      
-      <div class="space-y-3">
+      <form id="form-add-goal" class="space-y-4">
         <div>
-          <label class="block text-[11px] font-mono text-neutral-500 mb-1">Goal Name</label>
-          <input type="text" id="inputGoalName" placeholder="e.g., Life Savings, New Phone" class="w-full bg-black border border-neutral-800 rounded-lg px-3 py-2 text-xs text-neutral-200 focus:outline-none focus:border-neutral-600 font-mono">
+          <label class="block text-xs text-zinc-400 mb-1">Goal Title</label>
+          <input type="text" id="add-goal-title" required placeholder="e.g. Emergency Fund, Laptop" class="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-zinc-600">
         </div>
-        <div class="grid grid-cols-2 gap-2">
-          <div>
-            <label class="block text-[11px] font-mono text-neutral-500 mb-1">Starting Earnings</label>
-            <input type="number" id="inputStartingAmount" min="0" step="any" placeholder="0" class="w-full bg-black border border-neutral-800 rounded-lg px-3 py-2 text-xs text-neutral-200 focus:outline-none focus:border-neutral-600 font-mono">
-          </div>
-          <div>
-            <label class="block text-[11px] font-mono text-neutral-500 mb-1">Target Goal</label>
-            <input type="number" id="inputTargetAmount" min="0" step="any" placeholder="2000" class="w-full bg-black border border-neutral-800 rounded-lg px-3 py-2 text-xs text-neutral-200 focus:outline-none focus:border-neutral-600 font-mono">
-          </div>
+        <div>
+          <label class="block text-xs text-zinc-400 mb-1">Target Amount ($)</label>
+          <input type="number" id="add-goal-target" min="1" step="any" required placeholder="1000" class="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-zinc-600">
         </div>
-        <div class="grid grid-cols-2 gap-2">
-          <div>
-            <label class="block text-[11px] font-mono text-neutral-500 mb-1">Currency Symbol</label>
-            <input type="text" id="inputCurrency" maxlength="5" placeholder="$" class="w-full bg-black border border-neutral-800 rounded-lg px-3 py-2 text-xs text-neutral-200 focus:outline-none focus:border-neutral-600 font-mono">
-          </div>
-          <div>
-            <label class="block text-[11px] font-mono text-neutral-500 mb-1">Target Date (Optional)</label>
-            <input type="date" id="inputTargetDate" class="w-full bg-black border border-neutral-800 rounded-lg px-2 py-2 text-xs text-neutral-200 focus:outline-none focus:border-neutral-600 font-mono">
-          </div>
+        <div>
+          <label class="block text-xs text-zinc-400 mb-1">Initial Saved Amount ($)</label>
+          <input type="number" id="add-goal-initial" min="0" step="any" placeholder="0" class="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-zinc-600">
         </div>
-      </div>
-
-      <div class="flex justify-end gap-2 pt-2">
-        <button onclick="closeModal('goalModal')" class="px-3.5 py-2 rounded-lg text-neutral-500 hover:bg-neutral-900 text-xs font-mono">Cancel</button>
-        <button onclick="saveGoalForm()" class="px-4 py-2 bg-neutral-200 hover:bg-white text-black font-semibold rounded-lg text-xs font-mono transition">Save Goal</button>
-      </div>
+        <button type="submit" class="w-full bg-white text-black font-semibold text-sm py-2.5 rounded-lg hover:bg-zinc-200 transition mt-2">Create Goal</button>
+      </form>
     </div>
   </div>
 
-  <!-- 2. SETTINGS MODAL -->
-  <div id="settingsModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm hidden items-center justify-center p-4 z-50">
-    <div class="bg-neutral-950 border border-neutral-800 rounded-2xl w-full max-w-sm max-h-[90vh] flex flex-col shadow-2xl overflow-hidden">
-      
-      <!-- Header -->
-      <div class="flex justify-between items-center border-b border-neutral-900 p-4">
-        <div class="flex items-center gap-2 text-neutral-300">
-          <i class="fa-solid fa-gear text-xs"></i>
-          <h3 class="text-xs font-semibold uppercase tracking-wider">App Settings</h3>
-        </div>
-        <button onclick="closeModal('settingsModal')" class="text-neutral-500 hover:text-white text-lg">&times;</button>
+  <!-- MODAL: SETTINGS -->
+  <div id="modal-settings" class="fixed inset-0 modal-backdrop flex items-center justify-center p-4 z-50 hidden">
+    <div class="app-card w-full max-w-sm rounded-2xl p-5 fade-in shadow-2xl max-h-[90vh] overflow-y-auto">
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="text-base font-semibold">Settings</h3>
+        <button id="btn-close-settings-modal" class="text-zinc-500 hover:text-white"><i data-lucide="x" class="w-5 h-5"></i></button>
       </div>
 
-      <!-- Settings Body -->
-      <div class="p-5 space-y-6 overflow-y-auto flex-1">
-        
-        <!-- Background Theme Selector -->
-        <div class="space-y-3">
-          <label class="block text-xs font-mono text-neutral-400 uppercase tracking-wider">Background Theme</label>
-          <div class="grid grid-cols-2 gap-2">
-            <button onclick="setTheme('#000000')" class="p-2.5 rounded-lg border border-neutral-800 bg-black flex items-center gap-2 hover:border-neutral-600 transition text-left">
-              <span class="w-3.5 h-3.5 rounded-full bg-black border border-neutral-700"></span>
-              <span class="text-xs font-mono text-neutral-300">Pitch Black</span>
-            </button>
-            <button onclick="setTheme('#090d16')" class="p-2.5 rounded-lg border border-neutral-800 bg-[#090d16] flex items-center gap-2 hover:border-neutral-600 transition text-left">
-              <span class="w-3.5 h-3.5 rounded-full bg-[#090d16] border border-blue-900"></span>
-              <span class="text-xs font-mono text-neutral-300">Midnight Blue</span>
-            </button>
-            <button onclick="setTheme('#120a17')" class="p-2.5 rounded-lg border border-neutral-800 bg-[#120a17] flex items-center gap-2 hover:border-neutral-600 transition text-left">
-              <span class="w-3.5 h-3.5 rounded-full bg-[#120a17] border border-purple-900"></span>
-              <span class="text-xs font-mono text-neutral-300">Dark Violet</span>
-            </button>
-            <button onclick="setTheme('#0a140d')" class="p-2.5 rounded-lg border border-neutral-800 bg-[#0a140d] flex items-center gap-2 hover:border-neutral-600 transition text-left">
-              <span class="w-3.5 h-3.5 rounded-full bg-[#0a140d] border border-emerald-900"></span>
-              <span class="text-xs font-mono text-neutral-300">Dark Forest</span>
-            </button>
-          </div>
-
-          <!-- Custom Color Picker -->
-          <div class="pt-1 flex items-center justify-between bg-neutral-900/40 p-2.5 rounded-lg border border-neutral-900">
-            <span class="text-xs font-mono text-neutral-400">Custom Background</span>
-            <input type="color" id="customBgPicker" onchange="setTheme(this.value)" class="w-7 h-7 rounded cursor-pointer border-0 bg-transparent">
-          </div>
-        </div>
-
-        <!-- Danger Zone: Delete All Data -->
-        <div class="border-t border-neutral-900 pt-6 space-y-3">
-          <label class="block text-xs font-mono text-red-400/90 uppercase tracking-wider">Danger Zone</label>
-          <button onclick="startDeleteVerification()" class="w-full py-2.5 px-3 bg-red-950/40 hover:bg-red-900/60 border border-red-900/50 text-red-400 rounded-lg text-xs font-mono flex items-center justify-center gap-2 transition">
-            <i class="fa-solid fa-trash-can"></i>
-            <span>Delete All Goals & Data</span>
+      <!-- Theme Selection -->
+      <div class="mb-6">
+        <label class="block text-xs font-medium text-zinc-400 mb-2">COLOR THEME</label>
+        <div class="grid grid-cols-2 gap-2 mb-3">
+          <button type="button" class="btn-theme-select p-2.5 border rounded-lg text-left text-xs flex items-center justify-between" data-theme="pitch-black">
+            <span>Pitch Black</span>
+            <span class="w-3 h-3 rounded-full bg-black border border-zinc-700"></span>
+          </button>
+          <button type="button" class="btn-theme-select p-2.5 border rounded-lg text-left text-xs flex items-center justify-between" data-theme="midnight-blue">
+            <span>Midnight Blue</span>
+            <span class="w-3 h-3 rounded-full bg-slate-900 border border-slate-700"></span>
+          </button>
+          <button type="button" class="btn-theme-select p-2.5 border rounded-lg text-left text-xs flex items-center justify-between" data-theme="deep-purple">
+            <span>Deep Purple</span>
+            <span class="w-3 h-3 rounded-full bg-purple-950 border border-purple-800"></span>
+          </button>
+          <button type="button" class="btn-theme-select p-2.5 border rounded-lg text-left text-xs flex items-center justify-between" data-theme="charcoal-gray">
+            <span>Charcoal Gray</span>
+            <span class="w-3 h-3 rounded-full bg-zinc-800 border border-zinc-600"></span>
           </button>
         </div>
+        
+        <!-- White Confirm Button -->
+        <button id="btn-apply-theme" class="w-full bg-white text-black font-semibold text-xs py-2.5 rounded-lg hover:bg-zinc-200 transition shadow-md">
+          Apply & Confirm Theme
+        </button>
+      </div>
 
+      <!-- Backup & Data -->
+      <div class="border-t border-zinc-800/80 pt-4 mb-6">
+        <label class="block text-xs font-medium text-zinc-400 mb-2">BACKUP & DATA</label>
+        <div class="flex gap-2">
+          <button id="btn-export-json" class="flex-1 bg-zinc-900 border border-zinc-800 text-xs py-2 rounded-lg hover:bg-zinc-800 transition">Export (JSON)</button>
+          <button id="btn-import-trigger" class="flex-1 bg-zinc-900 border border-zinc-800 text-xs py-2 rounded-lg hover:bg-zinc-800 transition">Import (JSON)</button>
+          <input type="file" id="input-import-json" accept=".json" class="hidden">
+        </div>
+      </div>
+
+      <!-- Danger Zone -->
+      <div class="border-t border-zinc-800/80 pt-4">
+        <label class="block text-xs font-medium text-red-400 mb-2">DANGER ZONE</label>
+        <button id="btn-clear-data-trigger" class="w-full bg-red-950/40 border border-red-900/60 text-red-400 text-xs py-2.5 rounded-lg hover:bg-red-900/40 transition">
+          Reset All App Data
+        </button>
       </div>
     </div>
   </div>
 
-  <!-- 3. DELETE VERIFICATION - STEP 1 MODAL -->
-  <div id="deleteStep1Modal" class="fixed inset-0 bg-black/85 backdrop-blur-sm hidden items-center justify-center p-4 z-50">
-    <div class="bg-neutral-950 border border-neutral-800 rounded-2xl w-full max-w-xs p-5 space-y-4 shadow-2xl text-center">
-      <div class="w-10 h-10 rounded-full bg-red-950/80 border border-red-800 text-red-400 flex items-center justify-center mx-auto text-lg">
-        <i class="fa-solid fa-triangle-exclamation"></i>
-      </div>
-      <div>
-        <h3 class="text-sm font-semibold text-neutral-200">Are you really sure?</h3>
-        <p class="text-xs text-neutral-500 mt-1">This will permanently delete ALL active goals and clear saved data.</p>
-      </div>
-
-      <div class="flex gap-2 pt-2">
-        <button onclick="closeModal('deleteStep1Modal')" class="flex-1 py-2 rounded-lg bg-neutral-900 hover:bg-neutral-800 text-neutral-400 text-xs font-mono">Cancel</button>
-        <button onclick="proceedToDeleteStep2()" class="flex-1 py-2 rounded-lg bg-red-950 hover:bg-red-900 border border-red-800 text-red-300 text-xs font-mono font-semibold">Yes, Continue</button>
+  <!-- MODAL: VERIFICATION / PROMPT -->
+  <div id="modal-verify" class="fixed inset-0 modal-backdrop flex items-center justify-center p-4 z-50 hidden">
+    <div class="app-card w-full max-w-xs rounded-2xl p-5 fade-in shadow-2xl text-center">
+      <h3 id="verify-title" class="text-sm font-semibold mb-1">Security Verification</h3>
+      <p id="verify-desc" class="text-xs text-zinc-400 mb-4">Enter '1234' to confirm clearing all data.</p>
+      <input type="password" id="input-verify-code" placeholder="PIN Code" class="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 text-center text-sm text-white mb-3 focus:outline-none focus:border-zinc-600">
+      <div class="flex gap-2">
+        <button id="btn-verify-cancel" class="flex-1 bg-zinc-900 text-xs py-2 rounded-lg hover:bg-zinc-800 transition">Cancel</button>
+        <button id="btn-verify-confirm" class="flex-1 bg-red-600 text-white text-xs py-2 rounded-lg hover:bg-red-500 transition font-medium">Confirm</button>
       </div>
     </div>
   </div>
 
-  <!-- 4. DELETE VERIFICATION - STEP 2 MODAL (Requires '1234') -->
-  <div id="deleteStep2Modal" class="fixed inset-0 bg-black/90 backdrop-blur-md hidden items-center justify-center p-4 z-50">
-    <div class="bg-neutral-950 border border-red-900/60 rounded-2xl w-full max-w-xs p-5 space-y-4 shadow-2xl text-center">
-      <div class="w-10 h-10 rounded-full bg-red-950 border border-red-800 text-red-400 flex items-center justify-center mx-auto text-lg">
-        <i class="fa-solid fa-key"></i>
-      </div>
-      <div>
-        <h3 class="text-sm font-semibold text-red-400">Final Confirmation</h3>
-        <p class="text-xs text-neutral-400 mt-1">Type <strong class="text-white font-mono">1234</strong> to confirm wipe:</p>
-      </div>
-
-      <div>
-        <input type="text" id="deletePinInput" placeholder="Type 1234" class="w-full bg-black border border-neutral-800 rounded-lg px-3 py-2 text-center text-sm font-mono text-white focus:outline-none focus:border-red-600">
-        <p id="deletePinError" class="text-[11px] text-red-500 font-mono mt-1 hidden">Incorrect code. Type 1234.</p>
-      </div>
-
-      <div class="flex gap-2 pt-1">
-        <button onclick="closeModal('deleteStep2Modal')" class="flex-1 py-2 rounded-lg bg-neutral-900 hover:bg-neutral-800 text-neutral-400 text-xs font-mono">Cancel</button>
-        <button onclick="executeFinalDelete()" class="flex-1 py-2 rounded-lg bg-red-600 hover:bg-red-500 text-white text-xs font-mono font-semibold">Wipe Data</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- 5. DIRECT VALUE INPUT MODAL -->
-  <div id="directInputModal" class="fixed inset-0 bg-black/80 backdrop-blur-xs hidden items-center justify-center p-4 z-50">
-    <div class="bg-neutral-950 border border-neutral-800 rounded-2xl w-full max-w-xs p-5 space-y-4 shadow-2xl">
-      <div class="flex justify-between items-center border-b border-neutral-900 pb-2">
-        <h3 id="directInputTitle" class="text-xs font-semibold text-neutral-300 uppercase tracking-wider">Set Value</h3>
-        <button onclick="closeModal('directInputModal')" class="text-neutral-500 hover:text-white text-lg">&times;</button>
-      </div>
-      
-      <div>
-        <label id="directInputLabel" class="block text-[11px] font-mono text-neutral-500 mb-1">Enter Value</label>
-        <input type="number" id="directInputValue" step="any" class="w-full bg-black border border-neutral-800 rounded-lg px-3 py-2 text-base font-mono text-neutral-100 focus:outline-none focus:border-neutral-600">
-      </div>
-
-      <div class="flex justify-end gap-2 pt-1">
-        <button onclick="closeModal('directInputModal')" class="px-3 py-1.5 rounded-lg text-neutral-500 hover:bg-neutral-900 text-xs font-mono">Cancel</button>
-        <button onclick="applyDirectInput()" class="px-3.5 py-1.5 bg-neutral-200 hover:bg-white text-black font-semibold rounded-lg text-xs font-mono transition">Update</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- ==================== JAVASCRIPT LOGIC ==================== -->
+  <!-- JAVASCRIPT APP LOGIC -->
   <script>
-    const STORAGE_KEY = 'minimal_goal_tracker_app_v3';
+    
+    // STORAGE KEYS
+    const STORAGE_KEY = 'minimal_goal_counter_app_v1';
 
-    // Application State Data Model
+    // INITIAL APP STATE (Completely empty goals by default)
     let appState = {
-      bgTheme: "#000000",
-      activeGoalId: null,
-      goals: []
+      goals: [],
+      theme: 'pitch-black',
+      lastContributionDate: null,
+      streak: 0
     };
 
-    let currentStep = 10;
-    let editingGoalId = null;
-    let activeInputType = null;
+    let activeGoalId = null;
+    let selectedThemeTemp = 'pitch-black';
+    let pendingAction = null; // Callback for verification pin modal
 
-    // Load state from LocalStorage
-    function loadAppState() {
+    // INLINE SERVICE WORKER FOR PWA OFFLINE CAPABILITY
+    if ('serviceWorker' in navigator) {
+      const swCode = `
+        self.addEventListener('install', (e) => self.skipWaiting());
+        self.addEventListener('activate', (e) => e.waitUntil(self.clients.claim()));
+        self.addEventListener('fetch', (e) => {
+          e.respondWith(fetch(e.request).catch(() => caches.match(e.request)));
+        });
+      `;
+      const blob = new Blob([swCode], { type: 'application/javascript' });
+      navigator.serviceWorker.register(URL.createObjectURL(blob)).catch(() => {});
+    }
+
+    // --- DOM ELEMENTS ---
+    const viewDashboard = document.getElementById('view-dashboard');
+    const viewDetail = document.getElementById('view-detail');
+    const goalsList = document.getElementById('goals-list');
+    const emptyState = document.getElementById('empty-state');
+    const streakCountEl = document.getElementById('streak-count');
+
+    // Modals
+    const modalAddGoal = document.getElementById('modal-add-goal');
+    const modalSettings = document.getElementById('modal-settings');
+    const modalVerify = document.getElementById('modal-verify');
+
+
+    // LOAD STATE FROM STORAGE
+    function loadState() {
       try {
         const saved = localStorage.getItem(STORAGE_KEY);
         if (saved) {
-          appState = JSON.parse(saved);
+          const parsed = JSON.parse(saved);
+          appState = { ...appState, ...parsed };
         }
       } catch (e) {
-        console.warn("Could not load state:", e);
+        console.error('Error loading state:', e);
       }
-
-      // Ensure default goals list exists if empty
-      if (!appState.goals || appState.goals.length === 0) {
-        appState.goals = [];
-      }
-
-      applyTheme(appState.bgTheme || "#000000");
-
-      if (appState.activeGoalId && getActiveGoal()) {
-        showDetailView(appState.activeGoalId);
-      } else {
-        showDashboard();
-      }
+      applyTheme(appState.theme || 'pitch-black');
+      checkAndUpdateStreak();
+      render();
     }
 
-    // Save state to LocalStorage
-    function saveAppState() {
+    // SAVE STATE TO STORAGE
+    function saveState() {
       try {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(appState));
       } catch (e) {
-        console.error("Failed to write to localStorage:", e);
+        console.error('Error saving state:', e);
+      }
+      render();
+    }
+
+    // STREAK MANAGEMENT
+    function checkAndUpdateStreak() {
+      const today = new Date().toDateString();
+      if (!appState.lastContributionDate) {
+        appState.streak = 0;
+        return;
+      }
+
+      const lastDate = new Date(appState.lastContributionDate);
+      const currentDate = new Date();
+      
+      const diffTime = Math.abs(currentDate - lastDate);
+      const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+
+      if (diffDays > 1 && lastDate.toDateString() !== today) {
+        // Streak broken
+        appState.streak = 0;
       }
     }
 
-    // Helper: Get Active Goal Object
-    function getActiveGoal() {
-      return appState.goals.find(g => g.id === appState.activeGoalId);
+    function recordContribution() {
+      const today = new Date().toDateString();
+      if (appState.lastContributionDate !== today) {
+        appState.streak = (appState.streak || 0) + 1;
+        appState.lastContributionDate = today;
+      }
     }
 
-    // Theme Management
-    function setTheme(hexColor) {
-      appState.bgTheme = hexColor;
-      applyTheme(hexColor);
-      saveAppState();
+
+    // MAIN RENDER CONTROLLER
+    function render() {
+      lucide.createIcons();
+      streakCountEl.textContent = appState.streak || 0;
+
+      if (activeGoalId !== null) {
+        viewDashboard.classList.add('hidden');
+        viewDetail.classList.remove('hidden');
+        renderGoalDetail();
+      } else {
+        viewDetail.classList.add('hidden');
+        viewDashboard.classList.remove('hidden');
+        renderDashboard();
+      }
     }
 
-    function applyTheme(hexColor) {
-      document.getElementById('appBody').style.backgroundColor = hexColor;
-      document.getElementById('customBgPicker').value = hexColor;
-    }
-
-    // Format Money
-    function formatMoney(amount, currency = "$") {
-      const num = Number(amount) || 0;
-      const formattedNum = num.toLocaleString(undefined, {
-        minimumFractionDigits: 0,
-        maximumFractionDigits: 2
-      });
-      return `${formattedNum}${currency}`;
-    }
-
-    // VIEW SWITCHING
-    function showDashboard() {
-      appState.activeGoalId = null;
-      saveAppState();
-
-      document.getElementById('dashboardView').classList.remove('hidden');
-      document.getElementById('dashboardView').classList.add('flex');
-      document.getElementById('detailView').classList.add('hidden');
-      document.getElementById('detailView').classList.remove('flex');
-
-      renderDashboard();
-    }
-
-    function showDetailView(goalId) {
-      const goal = appState.goals.find(g => g.id === goalId);
-      if (!goal) return showDashboard();
-
-      appState.activeGoalId = goalId;
-      saveAppState();
-
-      document.getElementById('dashboardView').classList.add('hidden');
-      document.getElementById('dashboardView').classList.remove('flex');
-      document.getElementById('detailView').classList.remove('hidden');
-      document.getElementById('detailView').classList.add('flex');
-
-      currentStep = goal.step || 10;
-      setStepUI(currentStep);
-      renderDetailView();
-    }
-
-    // RENDER DASHBOARD
+    // RENDER DASHBOARD LIST
     function renderDashboard() {
-      const listEl = document.getElementById('goalsList');
-      listEl.innerHTML = '';
+      goalsList.innerHTML = '';
 
-      let totalSavings = 0;
+      if (!appState.goals || appState.goals.length === 0) {
+        emptyState.classList.remove('hidden');
+        return;
+      }
 
-      if (appState.goals.length === 0) {
-        listEl.innerHTML = `
-          <div class="text-center py-12 border border-dashed border-neutral-900 rounded-2xl p-6">
-            <i class="fa-solid fa-bullseye text-2xl text-neutral-700 mb-2"></i>
-            <p class="text-xs font-mono text-neutral-500">No savings goals created yet.</p>
-            <p class="text-[11px] font-mono text-neutral-600 mt-1">Tap the top-right button with the pen icon to start!</p>
+      emptyState.classList.add('hidden');
+
+      appState.goals.forEach(goal => {
+        const percent = Math.min(100, Math.round((goal.current / goal.target) * 100)) || 0;
+        const item = document.createElement('div');
+        item.className = 'app-card p-4 rounded-xl hover:border-zinc-700 cursor-pointer transition active:scale-[0.99]';
+        item.onclick = () => {
+          activeGoalId = goal.id;
+          render();
+        };
+
+        item.innerHTML = `
+          <div class="flex items-center justify-between mb-2">
+            <span class="font-medium text-sm text-zinc-100">${escapeHtml(goal.title)}</span>
+            <span class="text-xs text-zinc-400 font-mono">$${goal.current.toLocaleString()} / $${goal.target.toLocaleString()}</span>
+          </div>
+          <div class="w-full bg-zinc-900 border border-zinc-800/80 rounded-full h-2 overflow-hidden">
+            <div class="bg-white h-full rounded-full transition-all duration-300" style="width: ${percent}%"></div>
+          </div>
+          <div class="flex justify-between items-center mt-2 text-[10px] text-zinc-500">
+            <span>${percent}% completed</span>
+            <span>${goal.logs ? goal.logs.length : 0} logs</span>
           </div>
         `;
-      } else {
-        appState.goals.forEach(goal => {
-          totalSavings += (Number(goal.current) || 0);
-
-          let percentage = 0;
-          if (goal.target > 0) {
-            percentage = Math.min(Math.max((goal.current / goal.target) * 100, 0), 100);
-          }
-          const percentageFormatted = percentage % 1 === 0 ? percentage.toFixed(0) : percentage.toFixed(1);
-
-          // Deadline calculation for summary card
-          let deadlineText = "";
-          if (goal.targetDate) {
-            const today = new Date();
-            const target = new Date(goal.targetDate);
-            const diffDays = Math.ceil((target - today) / (1000 * 60 * 60 * 24));
-            if (diffDays > 0) {
-              deadlineText = `<span class="text-neutral-500"><i class="fa-regular fa-clock text-[10px] mr-1"></i>${diffDays} days left</span>`;
-            } else if (diffDays === 0) {
-              deadlineText = `<span class="text-amber-500"><i class="fa-regular fa-clock text-[10px] mr-1"></i>Due Today</span>`;
-            } else {
-              deadlineText = `<span class="text-red-500/80"><i class="fa-regular fa-clock text-[10px] mr-1"></i>Overdue</span>`;
-            }
-          }
-
-          const card = document.createElement('div');
-          card.className = "bg-neutral-950 hover:bg-neutral-900/60 border border-neutral-900 hover:border-neutral-800 rounded-2xl p-4 transition-all cursor-pointer shadow-lg group";
-          card.onclick = () => showDetailView(goal.id);
-
-          card.innerHTML = `
-            <div class="flex justify-between items-start mb-2">
-              <div>
-                <h3 class="text-sm font-medium text-neutral-200 group-hover:text-emerald-400 transition-colors">${escapeHtml(goal.name)}</h3>
-                <div class="text-[11px] font-mono text-neutral-500 mt-0.5">${deadlineText}</div>
-              </div>
-              <div class="text-right font-mono">
-                <span class="text-sm font-semibold text-neutral-100">${formatMoney(goal.current, goal.currency)}</span>
-                <span class="text-xs text-neutral-600"> / ${formatMoney(goal.target, goal.currency)}</span>
-              </div>
-            </div>
-
-            <!-- Card Progress Bar -->
-            <div class="space-y-1.5 mt-3">
-              <div class="flex justify-between items-center text-[10px] font-mono text-neutral-500">
-                <span>Progress</span>
-                <span class="text-neutral-300 font-semibold">${percentageFormatted}%</span>
-              </div>
-              <div class="w-full h-2 bg-neutral-900 rounded-full overflow-hidden p-0.5 border border-neutral-800/50">
-                <div class="progress-fill h-full bg-neutral-300 rounded-full" style="width: ${percentage}%"></div>
-              </div>
-            </div>
-          `;
-
-          listEl.appendChild(card);
-        });
-      }
-
-      document.getElementById('overallTotalSavings').textContent = formatMoney(totalSavings, "$");
-      document.getElementById('overallGoalCount').textContent = `${appState.goals.length} Active ${appState.goals.length === 1 ? 'Goal' : 'Goals'}`;
+        goalsList.appendChild(item);
+      });
     }
 
     // RENDER DETAIL VIEW
-    function renderDetailView() {
-      const goal = getActiveGoal();
-      if (!goal) return showDashboard();
-
-      const currentFormatted = formatMoney(goal.current, goal.currency);
-      const targetFormatted = formatMoney(goal.target, goal.currency);
-
-      let percentage = 0;
-      if (goal.target > 0) {
-        percentage = Math.min(Math.max((goal.current / goal.target) * 100, 0), 100);
-      }
-      const percentageFormatted = percentage % 1 === 0 ? percentage.toFixed(0) : percentage.toFixed(1);
-
-      // Header and Middle Display
-      document.getElementById('topCurrentDisplay').textContent = currentFormatted;
-      document.getElementById('topTargetDisplay').textContent = targetFormatted;
-
-      document.getElementById('mainGoalTitle').textContent = goal.name;
-      document.getElementById('middleCurrentDisplay').textContent = currentFormatted;
-      document.getElementById('middleTargetDisplay').textContent = targetFormatted;
-      document.getElementById('percentageDisplay').textContent = `${percentageFormatted}%`;
-
-      // Deadline Badge & Calculation
-      const deadlineBadge = document.getElementById('deadlineInfoBadge');
-      if (goal.targetDate && goal.target > 0) {
-        const today = new Date();
-        const targetDate = new Date(goal.targetDate);
-        const diffDays = Math.ceil((targetDate - today) / (1000 * 60 * 60 * 24));
-        const remainingAmount = Math.max(0, goal.target - goal.current);
-
-        if (diffDays > 0 && remainingAmount > 0) {
-          const dailyRequired = (remainingAmount / diffDays);
-          deadlineBadge.innerHTML = `<i class="fa-regular fa-calendar-check mr-1"></i> ${diffDays} days left • Save <strong>${formatMoney(dailyRequired, goal.currency)}/day</strong>`;
-          deadlineBadge.classList.remove('hidden');
-        } else if (remainingAmount === 0) {
-          deadlineBadge.innerHTML = `<i class="fa-solid fa-circle-check text-emerald-500 mr-1"></i> Goal Completed!`;
-          deadlineBadge.classList.remove('hidden');
-        } else {
-          deadlineBadge.innerHTML = `<i class="fa-solid fa-circle-exclamation text-amber-500 mr-1"></i> Deadline passed`;
-          deadlineBadge.classList.remove('hidden');
-        }
-      } else {
-        deadlineBadge.classList.add('hidden');
-      }
-
-      // Bottom Progress Bar
-      document.getElementById('progressBarText').textContent = `${percentageFormatted}%`;
-      document.getElementById('progressBarFill').style.width = `${percentage}%`;
-
-      // Render History Log
-      renderHistoryLog(goal);
-    }
-
-    // Render Transaction Log
-    function renderHistoryLog(goal) {
-      const historyList = document.getElementById('historyList');
-      const historyCount = document.getElementById('historyCount');
-      historyList.innerHTML = '';
-
-      const logs = goal.history || [];
-      historyCount.textContent = `${logs.length} ${logs.length === 1 ? 'log' : 'logs'}`;
-
-      if (logs.length === 0) {
-        historyList.innerHTML = `<div class="text-neutral-600 text-[11px] text-center py-2">No transaction history yet.</div>`;
+    function renderGoalDetail() {
+      const goal = appState.goals.find(g => g.id === activeGoalId);
+      if (!goal) {
+        activeGoalId = null;
+        render();
         return;
       }
 
-      // Render recent logs top-down
-      logs.slice().reverse().forEach(entry => {
-        const item = document.createElement('div');
-        item.className = "flex justify-between items-center py-1 border-b border-neutral-900/60 last:border-0";
+      document.getElementById('detail-title').textContent = goal.title;
+      document.getElementById('detail-current').textContent = goal.current.toLocaleString();
+      document.getElementById('detail-target').textContent = goal.target.toLocaleString();
 
-        const isPositive = entry.amount > 0;
-        const sign = isPositive ? '+' : '';
-        const colorClass = isPositive ? 'text-emerald-400' : 'text-red-400';
+      const percent = Math.min(100, Math.round((goal.current / goal.target) * 100)) || 0;
+      document.getElementById('detail-progress-bar').style.width = `${percent}%`;
 
-        item.innerHTML = `
-          <span class="text-neutral-500 text-[10px]">${entry.date}</span>
-          <span class="${colorClass} font-semibold">${sign}${formatMoney(entry.amount, goal.currency)}</span>
-        `;
-        historyList.appendChild(item);
-      });
-    }
+      // Estimate completion date calculation
+      calculateTargetEstimate(goal);
 
-    // Adjust value (+ / -)
-    function adjustValue(amount) {
-      const goal = getActiveGoal();
-      if (!goal) return;
+      // Render Transaction Logs
+      const logsList = document.getElementById('detail-logs-list');
+      logsList.innerHTML = '';
 
-      const prev = goal.current;
-      goal.current = Math.max(0, goal.current + amount);
-      const actualChange = goal.current - prev;
-
-      if (actualChange !== 0) {
-        if (!goal.history) goal.history = [];
-        goal.history.push({
-          amount: actualChange,
-          date: new Date().toLocaleDateString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+      if (!goal.logs || goal.logs.length === 0) {
+        logsList.innerHTML = `<p class="text-xs text-zinc-600 italic text-center py-4">No transactions recorded yet.</p>`;
+      } else {
+        [...goal.logs].reverse().forEach(log => {
+          const logEl = document.createElement('div');
+          logEl.className = 'flex items-center justify-between p-2.5 rounded-lg bg-zinc-900/60 border border-zinc-800/50 text-xs';
+          logEl.innerHTML = `
+            <div>
+              <p class="text-zinc-200 font-medium">+ $${log.amount.toLocaleString()}</p>
+              ${log.note ? `<p class="text-[10px] text-zinc-500">${escapeHtml(log.note)}</p>` : ''}
+            </div>
+            <span class="text-[10px] text-zinc-500 font-mono">${log.date}</span>
+          `;
+          logsList.appendChild(logEl);
         });
       }
-
-      saveAppState();
-      renderDetailView();
     }
 
-    // Step selector
-    function setStepAmount(step) {
-      currentStep = step;
-      const goal = getActiveGoal();
-      if (goal) {
-        goal.step = step;
-        saveAppState();
+    // CALCULATE ESTIMATED COMPLETION DATE
+    function calculateTargetEstimate(goal) {
+      const estimateEl = document.getElementById('detail-estimate');
+      const remaining = goal.target - goal.current;
+
+      if (remaining <= 0) {
+        estimateEl.innerHTML = `<span class="text-emerald-400 font-medium">🎉 Goal completed! Excellent job!</span>`;
+        return;
       }
-      setStepUI(step);
+
+      if (!goal.logs || goal.logs.length < 2) {
+        estimateEl.textContent = `Add more regular deposits to see an estimated completion date.`;
+        return;
+      }
+
+      // Calculate deposit rate per day based on historical logs
+      const sortedLogs = [...goal.logs].sort((a, b) => new Date(a.rawDate || 0) - new Date(b.rawDate || 0));
+      const firstLogDate = new Date(sortedLogs[0].rawDate || Date.now());
+      const lastLogDate = new Date(sortedLogs[sortedLogs.length - 1].rawDate || Date.now());
+
+      const totalDays = Math.max(1, (lastLogDate - firstLogDate) / (1000 * 60 * 60 * 24));
+      const totalSavedInPeriod = sortedLogs.reduce((acc, l) => acc + l.amount, 0);
+
+      const dailyRate = totalSavedInPeriod / totalDays;
+
+      if (dailyRate <= 0) {
+        estimateEl.textContent = `Deposit regularly to estimate your finish date.`;
+        return;
+      }
+
+      const daysNeeded = Math.ceil(remaining / dailyRate);
+      const estimatedDate = new Date();
+      estimatedDate.setDate(estimatedDate.getDate() + daysNeeded);
+
+      const options = { month: 'short', day: 'numeric', year: 'numeric' };
+      estimateEl.innerHTML = `At your current pace (~$${dailyRate.toFixed(1)}/day), you'll reach your goal by <strong class="text-white">${estimatedDate.toLocaleDateString(undefined, options)}</strong> (~${daysNeeded} days).`;
     }
 
-    function setStepUI(step) {
-      document.querySelectorAll('.step-btn').forEach(btn => {
-        const btnStep = Number(btn.getAttribute('data-step'));
-        if (btnStep === step) {
-          btn.className = "step-btn px-2.5 py-1 rounded border border-neutral-800 bg-neutral-900 text-neutral-200 font-mono hover:bg-neutral-900 transition";
+
+    // LOG DEPOSIT FUNCTION
+    function addDeposit(amount, note = '') {
+      if (activeGoalId === null || isNaN(amount) || amount <= 0) return;
+
+      const goal = appState.goals.find(g => g.id === activeGoalId);
+      if (!goal) return;
+
+      goal.current += amount;
+      if (!goal.logs) goal.logs = [];
+
+      const now = new Date();
+      const dateStr = now.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) + ' at ' + now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+      goal.logs.push({
+        id: Date.now(),
+        amount: amount,
+        note: note.trim(),
+        date: dateStr,
+        rawDate: now.toISOString()
+      });
+
+      recordContribution();
+      saveState();
+    }
+
+
+    // STEP PRESET BUTTONS
+    document.querySelectorAll('.btn-step-preset').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const step = parseFloat(btn.dataset.step);
+        addDeposit(step, 'Quick Add');
+      });
+    });
+
+    // CUSTOM LOG SUBMIT
+    document.getElementById('btn-submit-log').addEventListener('click', () => {
+      const amountInput = document.getElementById('input-log-amount');
+      const noteInput = document.getElementById('input-log-note');
+
+      const val = parseFloat(amountInput.value);
+      if (val > 0) {
+        addDeposit(val, noteInput.value);
+        amountInput.value = '';
+        noteInput.value = '';
+      }
+    });
+
+    // BACK TO DASHBOARD
+    document.getElementById('btn-detail-back').addEventListener('click', () => {
+      activeGoalId = null;
+      render();
+    });
+
+    // DELETE GOAL
+    document.getElementById('btn-detail-delete').addEventListener('click', () => {
+      promptVerification("Delete Goal", "Enter '1234' to confirm deleting this goal.", () => {
+        appState.goals = appState.goals.filter(g => g.id !== activeGoalId);
+        activeGoalId = null;
+        saveState();
+      });
+    });
+
+    // ADD GOAL MODAL CONTROLS
+    document.getElementById('btn-add-goal').addEventListener('click', () => {
+      modalAddGoal.classList.remove('hidden');
+    });
+    document.getElementById('btn-close-add-modal').addEventListener('click', () => {
+      modalAddGoal.classList.add('hidden');
+    });
+
+    document.getElementById('form-add-goal').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const title = document.getElementById('add-goal-title').value.trim();
+      const target = parseFloat(document.getElementById('add-goal-target').value);
+      const initial = parseFloat(document.getElementById('add-goal-initial').value) || 0;
+
+      if (!title || isNaN(target) || target <= 0) return;
+
+      const newGoal = {
+        id: 'goal_' + Date.now(),
+        title: title,
+        target: target,
+        current: initial,
+        logs: initial > 0 ? [{
+          id: Date.now(),
+          amount: initial,
+          note: 'Initial balance',
+          date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+          rawDate: new Date().toISOString()
+        }] : []
+      };
+
+      if (!appState.goals) appState.goals = [];
+      appState.goals.push(newGoal);
+      saveState();
+
+      // Reset Form & Close
+      e.target.reset();
+      modalAddGoal.classList.add('hidden');
+    });
+
+
+    // SETTINGS MODAL CONTROLS
+    document.getElementById('btn-settings').addEventListener('click', () => {
+      selectedThemeTemp = appState.theme || 'pitch-black';
+      updateThemeSelectUI();
+      modalSettings.classList.remove('hidden');
+    });
+    document.getElementById('btn-close-settings-modal').addEventListener('click', () => {
+      modalSettings.classList.add('hidden');
+    });
+
+    // THEME SELECTION UI
+    function applyTheme(theme) {
+      document.body.className = `theme-${theme} min-h-screen flex flex-col justify-between select-none`;
+    }
+
+    function updateThemeSelectUI() {
+      document.querySelectorAll('.btn-theme-select').forEach(btn => {
+        if (btn.dataset.theme === selectedThemeTemp) {
+          btn.classList.add('border-white', 'bg-zinc-800/80');
+          btn.classList.remove('border-zinc-800');
         } else {
-          btn.className = "step-btn px-2.5 py-1 rounded border border-neutral-900 bg-neutral-950 text-neutral-500 font-mono hover:bg-neutral-900 transition";
+          btn.classList.remove('border-white', 'bg-zinc-800/80');
+          btn.classList.add('border-zinc-800');
         }
       });
     }
 
-    // CREATE / EDIT GOAL MODALS
-    function openCreateGoalModal() {
-      editingGoalId = null;
-      document.getElementById('goalModalTitle').textContent = "Create New Goal";
-      document.getElementById('inputGoalName').value = "";
-      document.getElementById('inputStartingAmount').value = "";
-      document.getElementById('inputTargetAmount').value = "";
-      document.getElementById('inputCurrency').value = "$";
-      document.getElementById('inputTargetDate').value = "";
+    document.querySelectorAll('.btn-theme-select').forEach(btn => {
+      btn.addEventListener('click', () => {
+        selectedThemeTemp = btn.dataset.theme;
+        updateThemeSelectUI();
+      });
+    });
 
-      openModal('goalModal');
-    }
+    // APPLY THEME CONFIRM BUTTON
+    document.getElementById('btn-apply-theme').addEventListener('click', () => {
+      appState.theme = selectedThemeTemp;
+      applyTheme(appState.theme);
+      saveState();
+      modalSettings.classList.add('hidden');
+    });
 
-    function openEditCurrentGoalModal() {
-      const goal = getActiveGoal();
-      if (!goal) return;
+    // EXPORT DATA (JSON)
+    document.getElementById('btn-export-json').addEventListener('click', () => {
+      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(appState, null, 2));
+      const downloadAnchor = document.createElement('a');
+      downloadAnchor.setAttribute("href", dataStr);
+      downloadAnchor.setAttribute("download", `goal_tracker_backup_${new Date().toISOString().slice(0,10)}.json`);
+      document.body.appendChild(downloadAnchor);
+      downloadAnchor.click();
+      downloadAnchor.remove();
+    });
 
-      editingGoalId = goal.id;
-      document.getElementById('goalModalTitle').textContent = "Edit Goal Details";
-      document.getElementById('inputGoalName').value = goal.name;
-      document.getElementById('inputStartingAmount').value = goal.current;
-      document.getElementById('inputTargetAmount').value = goal.target;
-      document.getElementById('inputCurrency').value = goal.currency;
-      document.getElementById('inputTargetDate').value = goal.targetDate || "";
+    // IMPORT DATA (JSON)
+    document.getElementById('btn-import-trigger').addEventListener('click', () => {
+      document.getElementById('input-import-json').click();
+    });
 
-      openModal('goalModal');
-    }
+    document.getElementById('input-import-json').addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
 
-    function saveGoalForm() {
-      const name = document.getElementById('inputGoalName').value.trim() || "Savings Goal";
-      const starting = parseFloat(document.getElementById('inputStartingAmount').value) || 0;
-      const target = parseFloat(document.getElementById('inputTargetAmount').value) || 0;
-      const currency = document.getElementById('inputCurrency').value.trim() || "$";
-      const targetDate = document.getElementById('inputTargetDate').value;
-
-      if (editingGoalId) {
-        // Edit Existing
-        const goal = appState.goals.find(g => g.id === editingGoalId);
-        if (goal) {
-          goal.name = name;
-          goal.current = Math.max(0, starting);
-          goal.target = Math.max(0, target);
-          goal.currency = currency;
-          goal.targetDate = targetDate;
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        try {
+          const imported = JSON.parse(event.target.result);
+          if (imported && Array.isArray(imported.goals)) {
+            appState = imported;
+            saveState();
+            modalSettings.classList.add('hidden');
+          } else {
+            alert('Invalid backup format.');
+          }
+        } catch (err) {
+          alert('Failed to parse backup JSON file.');
         }
-      } else {
-        // Create New
-        const newGoal = {
-          id: 'goal_' + Date.now(),
-          name: name,
-          current: Math.max(0, starting),
-          target: Math.max(0, target),
-          currency: currency,
-          targetDate: targetDate,
-          step: 10,
-          history: starting > 0 ? [{
-            amount: starting,
-            date: new Date().toLocaleDateString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
-          }] : []
-        };
-        appState.goals.push(newGoal);
-        appState.activeGoalId = newGoal.id;
-      }
+      };
+      reader.readAsText(file);
+    });
 
-      saveAppState();
-      closeModal('goalModal');
-
-      if (appState.activeGoalId) {
-        showDetailView(appState.activeGoalId);
-      } else {
-        showDashboard();
-      }
-    }
-
-    function deleteCurrentGoal() {
-      const goal = getActiveGoal();
-      if (!goal) return;
-
-      appState.goals = appState.goals.filter(g => g.id !== goal.id);
-      appState.activeGoalId = null;
-      saveAppState();
-      showDashboard();
-    }
-
-    // DIRECT INPUT MODAL
-    function openDirectInputModal(type) {
-      const goal = getActiveGoal();
-      if (!goal) return;
-
-      activeInputType = type;
-      const titleEl = document.getElementById('directInputTitle');
-      const labelEl = document.getElementById('directInputLabel');
-      const inputEl = document.getElementById('directInputValue');
-
-      if (type === 'current') {
-        titleEl.textContent = "Edit Current Progress";
-        labelEl.textContent = `Set current value (${goal.currency})`;
-        inputEl.value = goal.current;
-      } else if (type === 'target') {
-        titleEl.textContent = "Edit Target Goal";
-        labelEl.textContent = `Set target goal amount (${goal.currency})`;
-        inputEl.value = goal.target;
-      } else if (type === 'custom') {
-        titleEl.textContent = "Custom Input";
-        labelEl.textContent = `Amount to add (use negative '-' to subtract)`;
-        inputEl.value = "";
-      }
-
-      openModal('directInputModal');
-      setTimeout(() => inputEl.focus(), 100);
-    }
-
-    function applyDirectInput() {
-      const goal = getActiveGoal();
-      if (!goal) return;
-
-      const val = parseFloat(document.getElementById('directInputValue').value);
-      if (isNaN(val)) {
-        closeModal('directInputModal');
-        return;
-      }
-
-      if (activeInputType === 'current') {
-        const diff = Math.max(0, val) - goal.current;
-        goal.current = Math.max(0, val);
-        if (diff !== 0) {
-          if (!goal.history) goal.history = [];
-          goal.history.push({
-            amount: diff,
-            date: new Date().toLocaleDateString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
-          });
-        }
-      } else if (activeInputType === 'target') {
-        if (val >= 0) goal.target = val;
-      } else if (activeInputType === 'custom') {
-        const prev = goal.current;
-        goal.current = Math.max(0, goal.current + val);
-        const actualChange = goal.current - prev;
-        if (actualChange !== 0) {
-          if (!goal.history) goal.history = [];
-          goal.history.push({
-            amount: actualChange,
-            date: new Date().toLocaleDateString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
-          });
-        }
-      }
-
-      saveAppState();
-      renderDetailView();
-      closeModal('directInputModal');
-    }
-
-    // 2-STEP DELETION LOGIC
-    function startDeleteVerification() {
-      closeModal('settingsModal');
-      openModal('deleteStep1Modal');
-    }
-
-    function proceedToDeleteStep2() {
-      closeModal('deleteStep1Modal');
-      document.getElementById('deletePinInput').value = "";
-      document.getElementById('deletePinError').classList.add('hidden');
-      openModal('deleteStep2Modal');
-      setTimeout(() => document.getElementById('deletePinInput').focus(), 100);
-    }
-
-    function executeFinalDelete() {
-      const pin = document.getElementById('deletePinInput').value.trim();
-      if (pin === "1234") {
+    // CLEAR DATA / RESET APP
+    document.getElementById('btn-clear-data-trigger').addEventListener('click', () => {
+      promptVerification("Reset All App Data", "Enter '1234' to confirm deleting all goals and settings.", () => {
         localStorage.removeItem(STORAGE_KEY);
-        appState = { bgTheme: "#000000", activeGoalId: null, goals: [] };
-        applyTheme("#000000");
-        saveAppState();
-        closeModal('deleteStep2Modal');
-        showDashboard();
+        appState = {
+          goals: [],
+          theme: 'pitch-black',
+          lastContributionDate: null,
+          streak: 0
+        };
+        activeGoalId = null;
+        applyTheme('pitch-black');
+        saveState();
+        modalSettings.classList.add('hidden');
+      });
+    });
+
+    // PIN VERIFICATION MODAL LOGIC
+    function promptVerification(title, desc, onConfirm) {
+      document.getElementById('verify-title').textContent = title;
+      document.getElementById('verify-desc').textContent = desc;
+      const input = document.getElementById('input-verify-code');
+      input.value = '';
+      pendingAction = onConfirm;
+      modalVerify.classList.remove('hidden');
+      input.focus();
+    }
+
+    document.getElementById('btn-verify-cancel').addEventListener('click', () => {
+      modalVerify.classList.add('hidden');
+      pendingAction = null;
+    });
+
+    document.getElementById('btn-verify-confirm').addEventListener('click', () => {
+      const input = document.getElementById('input-verify-code');
+      if (input.value === '1234') {
+        modalVerify.classList.add('hidden');
+        if (typeof pendingAction === 'function') pendingAction();
+        pendingAction = null;
       } else {
-        document.getElementById('deletePinError').classList.remove('hidden');
+        input.classList.add('border-red-500');
+        setTimeout(() => input.classList.remove('border-red-500'), 1000);
       }
-    }
+    });
 
-    // Modal helpers
-    function openModal(id) {
-      const modal = document.getElementById(id);
-      modal.classList.remove('hidden');
-      modal.classList.add('flex');
-    }
-
-    function closeModal(id) {
-      const modal = document.getElementById(id);
-      modal.classList.add('hidden');
-      modal.classList.remove('flex');
-    }
-
+    // UTILS
     function escapeHtml(str) {
-      return str.replace(/[&<>"']/g, function(m) {
+      return (str || '').replace(/[&<>"']/g, function(m) {
         return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' }[m];
       });
     }
 
-    // Global Key Listener (Escape closes modals)
-    window.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape') {
-        closeModal('goalModal');
-        closeModal('settingsModal');
-        closeModal('directInputModal');
-        closeModal('deleteStep1Modal');
-        closeModal('deleteStep2Modal');
-      }
+    // INITIALIZATION ON LOAD
+    window.addEventListener('DOMContentLoaded', () => {
+      loadState();
     });
-
-    // Start App
-    window.onload = function() {
-      loadAppState();
-    };
   </script>
 </body>
 </html>
